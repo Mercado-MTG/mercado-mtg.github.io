@@ -7,7 +7,7 @@
   <meta name="description" content="Compra y vende cartas de Magic: The Gathering en Perú con pago protegido: el vendedor cobra solo cuando recibes tu carta.">
   <meta name="theme-color" content="#0c0a1a">
   <meta property="og:title" content="Mercado MTG">
-  <meta property="og:description" content="Compra y vende cartas de Magic en Perú con pago protegido.">
+  <meta property="og:description" content="Compra y vende cartas de Magic en Perú con pago protegido, y juega Commander en línea con mesas por bracket.">
   <link rel="icon" type="image/png" href="favicon.png">
   <link rel="apple-touch-icon" href="logo-512.png">
   <meta property="og:image" content="https://mercado-mtg.github.io/logo-512.png">
@@ -66,7 +66,15 @@
       // la app se carga aquí para pasarle ?carpeta=nick (enlaces para compartir una carpeta)
       var app = document.getElementById('app');
       var carpeta = (new URLSearchParams(location.search).get('carpeta') || '').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 24);
-      app.src = app.getAttribute('data-src') + (carpeta ? '?carpeta=' + encodeURIComponent(carpeta) : '');
+      // ?venta=id abre una carta y ?sala=CODIGO invita a una mesa (enlaces compartidos por WhatsApp)
+      var q = new URLSearchParams(location.search);
+      var venta = (q.get('venta') || '').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 64);
+      var sala = (q.get('sala') || '').replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(0, 5);
+      var params = [];
+      if (carpeta) params.push('carpeta=' + encodeURIComponent(carpeta));
+      if (venta) params.push('venta=' + encodeURIComponent(venta));
+      if (sala) params.push('sala=' + encodeURIComponent(sala));
+      app.src = app.getAttribute('data-src') + (params.length ? '?' + params.join('&') : '');
       var cargando = document.getElementById('cargando');
       function ocultar() { cargando.classList.add('fuera'); }
       document.getElementById('app').addEventListener('load', function () { setTimeout(ocultar, 400); });

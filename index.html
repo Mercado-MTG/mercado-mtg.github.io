@@ -4,10 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <title>Mercado MTG</title>
-  <meta name="description" content="Compra y vende cartas de Magic: The Gathering en Perú con pago protegido: el vendedor cobra solo cuando recibes tu carta.">
+  <meta name="description" content="Compra y vende cartas de Magic: The Gathering en Perú: elige cómo pagar y dónde recibir, y coordina por WhatsApp con vendedores con reputación.">
   <meta name="theme-color" content="#0c0a1a">
   <meta property="og:title" content="Mercado MTG">
-  <meta property="og:description" content="Compra y vende cartas de Magic en Perú con pago protegido, y juega Commander en línea con mesas por bracket.">
+  <meta property="og:description" content="Compra y vende cartas de Magic en Perú, recibe alertas de las cartas que buscas y juega Commander en línea con mesas por bracket.">
   <link rel="icon" type="image/png" href="favicon.png">
   <link rel="apple-touch-icon" href="logo-512.png">
   <meta property="og:image" content="https://mercado-mtg.github.io/logo-512.png">
@@ -60,9 +60,55 @@
             e.source.postMessage({ tipo: 'mtg-idioma', idioma: localStorage.getItem('mtg_lang') || '', dicc: localStorage.getItem('mtg_tr_en3') || '' }, e.origin);
           } else if (e.data.tipo === 'mtg-guardar-dicc') {
             localStorage.setItem('mtg_tr_en3', String(e.data.dicc || '').slice(0, 3000000)); // traducciones al inglés ya hechas
+          } else if (e.data.tipo === 'mtg-google-pedir') {
+            pedirGoogle(e.source, e.origin, String(e.data.clientId || ''));
           }
         } catch (x) { }
       });
+
+      // "Continuar con Google": Google solo muestra su botón en un dominio registrado (este), no dentro de la app.
+      // Se abre una ventanita con el botón; la credencial que da Google se le pasa a la app, que la verifica.
+      var gsiCargado = null;
+      function cargarGsi(listo) {
+        if (window.google && google.accounts && google.accounts.id) return listo();
+        if (!gsiCargado) {
+          gsiCargado = [];
+          var s = document.createElement('script');
+          s.src = 'https://accounts.google.com/gsi/client';
+          s.async = true;
+          s.onload = function () { gsiCargado.forEach(function (f) { f(); }); gsiCargado = 'ok'; };
+          document.head.appendChild(s);
+        }
+        if (gsiCargado === 'ok') listo(); else gsiCargado.push(listo);
+      }
+      function pedirGoogle(marco, origen, clientId) {
+        if (!/^[\w.-]+\.apps\.googleusercontent\.com$/.test(clientId)) return;
+        var viejo = document.getElementById('gCapa');
+        if (viejo) viejo.remove();
+        var capa = document.createElement('div');
+        capa.id = 'gCapa';
+        capa.style.cssText = 'position:fixed;inset:0;background:rgba(10,8,20,.72);display:flex;align-items:center;justify-content:center;z-index:50;padding:16px';
+        capa.innerHTML = '<div style="background:#fff;color:#1f1f1f;border-radius:18px;padding:24px;max-width:340px;width:100%;text-align:center;font:500 14px system-ui,-apple-system,Segoe UI,sans-serif">' +
+          '<img src="logo.png" alt="" width="56" height="56" style="border-radius:14px"><h2 style="font-size:18px;margin:10px 0 6px">Entrar a Mercado MTG</h2>' +
+          '<p style="margin:0 0 16px;color:#555">Elige tu cuenta de Google. Tu correo no se muestra a nadie.</p>' +
+          '<div id="gBoton" style="display:flex;justify-content:center;min-height:44px"></div>' +
+          '<button type="button" id="gCancelar" style="margin-top:14px;background:none;border:0;color:#555;font:inherit;text-decoration:underline;cursor:pointer">Cancelar</button></div>';
+        document.body.appendChild(capa);
+        function cerrar(tipo) { capa.remove(); if (tipo) marco.postMessage({ tipo: tipo }, origen); }
+        document.getElementById('gCancelar').onclick = function () { cerrar('mtg-google-cancelado'); };
+        capa.onclick = function (ev) { if (ev.target === capa) cerrar('mtg-google-cancelado'); };
+        cargarGsi(function () {
+          google.accounts.id.initialize({
+            client_id: clientId,
+            callback: function (r) {
+              cerrar('');
+              marco.postMessage({ tipo: 'mtg-google', credencial: r.credential }, origen);
+            }
+          });
+          google.accounts.id.renderButton(document.getElementById('gBoton'),
+            { theme: 'filled_blue', size: 'large', text: 'continue_with', shape: 'pill', locale: 'es', width: 280 });
+        });
+      }
       // la app se carga aquí para pasarle ?carpeta=nick (enlaces para compartir una carpeta)
       var app = document.getElementById('app');
       var carpeta = (new URLSearchParams(location.search).get('carpeta') || '').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 24);

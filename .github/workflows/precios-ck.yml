@@ -1,0 +1,16 @@
+# Todos los días a las 6 a. m. de Lima (11:00 UTC) le pide a la app que renueve los precios de Card Kingdom
+# (el precio más barato de cada carta y el de cada edición). La app solo los baja si tienen más de 6 horas.
+name: Precios de Card Kingdom
+on:
+  schedule:
+    - cron: '0 11 * * *'
+  workflow_dispatch:
+jobs:
+  actualizar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Pedir la actualización
+        run: |
+          curl -sSL --max-time 360 -d "" \
+            "https://script.google.com/macros/s/AKfycbxn5R4v8c-0SpumGkuwnUhzcjhSr6-o_EBaoj8Uclo5RU7NEfcepyT0vcri1yPnnynd3Q/exec?accion=preciosck&diario=1"
+          echo

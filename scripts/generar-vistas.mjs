@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const FEED = 'https://script.google.com/macros/s/AKfycbxn5R4v8c-0SpumGkuwnUhzcjhSr6-o_EBaoj8Uclo5RU7NEfcepyT0vcri1yPnnynd3Q/exec?feed=ventas';
-const SITIO = 'https://mercado-mtg.github.io';
+const SITIO = 'https://mercado-mtg.pages.dev';
 const RAIZ = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1')), '..');
 const DIR = path.join(RAIZ, 'c');
 

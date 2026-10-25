@@ -47,10 +47,23 @@
     (function () {
       var CLAVE = 'mtg_token';
       function esLaApp(origen) { return /^https:\/\/[a-z0-9-]+[.-]script\.googleusercontent\.com$/.test(origen); }
+      // #analizar={n,l}: mazo que trae el marcador "Analizar en Mercado MTG" desde Moxfield. Se quita de la
+      // barra de direcciones y se le da a la app (una sola vez) cuando lo pide al entrar.
+      var mazoTraido = null;
+      if (location.hash.indexOf('#analizar=') === 0) {
+        try {
+          var m = JSON.parse(decodeURIComponent(location.hash.slice(10)));
+          if (m && typeof m.l === 'string' && m.l.trim()) mazoTraido = { lista: m.l.slice(0, 20000), nombre: String(m.n || '').slice(0, 60) };
+        } catch (x) { }
+        history.replaceState(null, '', location.pathname + location.search);
+      }
       window.addEventListener('message', function (e) {
         if (!esLaApp(e.origin) || !e.data || typeof e.data !== 'object') return;
         try {
-          if (e.data.tipo === 'mtg-guardar-token') {
+          if (e.data.tipo === 'mtg-pedir-mazo') {
+            if (mazoTraido) e.source.postMessage({ tipo: 'mtg-mazo', lista: mazoTraido.lista, nombre: mazoTraido.nombre }, e.origin);
+            mazoTraido = null;
+          } else if (e.data.tipo === 'mtg-guardar-token') {
             var t = String(e.data.token || '').slice(0, 200);
             if (t) localStorage.setItem(CLAVE, t); else localStorage.removeItem(CLAVE);
           } else if (e.data.tipo === 'mtg-pedir-token') {

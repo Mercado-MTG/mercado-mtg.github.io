@@ -4,6 +4,16 @@
 // de conexión que llegan por el servidor; la voz va directo entre los navegadores (WebRTC).
 (function () {
   var STUN = [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }];
+  // Con TURN la voz pasa por un relevo de Cloudflare cuando no se puede conectar directo (celulares, NAT estricto).
+  // Las credenciales duran 6 h; se piden al unirse y se renuevan pasadas 5 h.
+  var ICE_URL = 'https://mercado-mtg.mercado-mtg-cf.workers.dev/voz/ice';
+  var ice = STUN, iceHasta = 0;
+  function pedirIce() {
+    if (Date.now() < iceHasta || !window.fetch) return Promise.resolve();
+    return fetch(ICE_URL).then(function (r) { return r.json(); }).then(function (d) {
+      if (d && d.iceServers && d.iceServers.length) { ice = d.iceServers; iceHasta = Date.now() + (d.turn ? 5 * 3600 * 1000 : 10 * 60 * 1000); }
+    }).catch(function () { /* sigue con STUN */ });
+  }
 
   function Motor(enviar) {
     var mic = null, sid = '', mute = false, yo = '';
@@ -65,7 +75,7 @@
     }
     function nuevo(id, sidRemoto, ofrezco) {
       cerrar(id);
-      var pc = new RTCPeerConnection({ iceServers: STUN });
+      var pc = new RTCPeerConnection({ iceServers: ice });
       var p = pares[id] = { pc: pc, sidRemoto: sidRemoto, ofrezco: ofrezco, ts: Date.now(), estado: 'conectando' };
       mic.getTracks().forEach(function (t) { pc.addTrack(t, mic); });
       pc.ontrack = function (e) {
@@ -127,6 +137,7 @@
           return enviar({ op: 'error', msg: 'Este navegador no permite chat de voz.' });
         }
         navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }, video: false })
+          .then(function (st) { return pedirIce().then(function () { return st; }); })
           .then(function (st) {
             mic = st; mute = false; yo = String(m.yo || '');
             sid = Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
@@ -153,6 +164,7 @@
         if (mic) mic.getAudioTracks().forEach(function (t) { t.enabled = !mute; });
         avisar();
       } else if (m.op === 'pares' && mic) {
+        pedirIce();
         // quién está en la voz ahora: { idAsiento: sid }. Entre cada par, ofrece el de id menor.
         var pres = m.pres || {}, ahora = Date.now();
         Object.keys(pares).forEach(function (id) { if (pres[id] !== pares[id].sidRemoto) cerrar(id); });
